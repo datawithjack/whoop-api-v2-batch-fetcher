@@ -85,13 +85,13 @@ def refresh_user_token_batch(credentials):
     # WHOOP token refresh endpoint
     token_url = "https://api.prod.whoop.com/oauth/oauth2/token"
     
-    # Prepare refresh request (same as token_refresh_handler)
+    # Prepare refresh request (following WHOOP API documentation)
     refresh_data = {
         "grant_type": "refresh_token",
         "client_id": client_id,
         "client_secret": client_secret,
-        "refresh_token": credentials['refresh_token'],
-        "redirect_uri": redirect_uri
+        "scope": "offline",  # Required for refresh token flow
+        "refresh_token": credentials['refresh_token']
     }
     
     try:
@@ -187,7 +187,7 @@ def flatten_sleep_record(record):
     
     return flat_record
 
-def export_sleep_data_to_csv(sleep_records, exports_dir, user_email="user"):
+def export_sleep_data_to_csv(sleep_records, exports_dir, user_email="user", start_date=None, end_date=None):
     """Export sleep data to CSV files"""
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
@@ -202,9 +202,13 @@ def export_sleep_data_to_csv(sleep_records, exports_dir, user_email="user"):
         flat_record['user_email'] = user_email
         flattened_records.append(flat_record)
     
-    # Create user-specific filename
+    # Create user-specific filename with date range
     safe_user_id = user_email.replace('@', '_at_').replace('.', '_')
-    user_filename = os.path.join(exports_dir, f"sleep_data_batch_{safe_user_id}_{timestamp}.csv")
+    if start_date and end_date:
+        date_range = f"{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
+        user_filename = os.path.join(exports_dir, f"sleep_data_batch_{safe_user_id}_{date_range}_{timestamp}.csv")
+    else:
+        user_filename = os.path.join(exports_dir, f"sleep_data_batch_{safe_user_id}_{timestamp}.csv")
     
     # Get all field names
     fieldnames = set()
@@ -221,13 +225,48 @@ def export_sleep_data_to_csv(sleep_records, exports_dir, user_email="user"):
     print(f"  ✅ User CSV exported: {user_filename} ({len(flattened_records)} records)")
     return user_filename
 
-def fetch_user_sleep_data(credentials, days_back=30):
-    """Fetch sleep data for a specific user"""
-    print(f"  😴 Fetching sleep data for last {days_back} days...")
+def get_date_range_from_user():
+    """Get start and end dates from user input"""
+    print("\n📅 Date Range Selection")
+    print("="*40)
+    print("Enter the date range for sleep data extraction")
+    print("Format: YYYY-MM-DD (e.g., 2024-01-01)")
+    print()
     
-    # Calculate date range
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days_back)
+    while True:
+        try:
+            start_date_str = input("Enter start date (YYYY-MM-DD): ").strip()
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            
+            end_date_str = input("Enter end date (YYYY-MM-DD): ").strip()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            
+            # Validate date range
+            if start_date > end_date:
+                print("❌ Start date cannot be after end date. Please try again.")
+                continue
+            
+            if end_date > datetime.now():
+                print("❌ End date cannot be in the future. Please try again.")
+                continue
+            
+            print(f"✅ Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+            return start_date, end_date
+            
+        except ValueError:
+            print("❌ Invalid date format. Please use YYYY-MM-DD format.")
+        except Exception as e:
+            print(f"❌ Error: {e}")
+
+def fetch_user_sleep_data(credentials, start_date=None, end_date=None, days_back=30):
+    """Fetch sleep data for a specific user"""
+    if start_date and end_date:
+        print(f"  😴 Fetching sleep data from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}...")
+    else:
+        print(f"  😴 Fetching sleep data for last {days_back} days...")
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days_back)
     
     print(f"  📅 Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
     
@@ -335,7 +374,7 @@ def get_user_profile(credentials):
         print(f"  ❌ Error fetching profile: {e}")
         return None
 
-def process_user(user_email, user_credentials, exports_dir, days_back=30):
+def process_user(user_email, user_credentials, exports_dir, start_date=None, end_date=None, days_back=30):
     """Process a single user's sleep data"""
     print(f"\n👤 Processing user: {user_email}")
     print("-" * 50)
@@ -386,16 +425,20 @@ def process_user(user_email, user_credentials, exports_dir, days_back=30):
     whoop_user_id = profile.get('user_id', 'Unknown')
     
     # Fetch sleep data
-    sleep_records = fetch_user_sleep_data(user_credentials, days_back)
+    sleep_records = fetch_user_sleep_data(user_credentials, start_date, end_date, days_back)
     
     if sleep_records:
         # Export to CSV
-        csv_filename = export_sleep_data_to_csv(sleep_records, exports_dir, user_email)
+        csv_filename = export_sleep_data_to_csv(sleep_records, exports_dir, user_email, start_date, end_date)
         
         # Save to JSON as well
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         safe_user_id = user_email.replace('@', '_at_').replace('.', '_')
-        json_filename = os.path.join(exports_dir, "json", f"sleep_data_batch_{safe_user_id}_{timestamp}.json")
+        if start_date and end_date:
+            date_range = f"{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}"
+            json_filename = os.path.join(exports_dir, "json", f"sleep_data_batch_{safe_user_id}_{date_range}_{timestamp}.json")
+        else:
+            json_filename = os.path.join(exports_dir, "json", f"sleep_data_batch_{safe_user_id}_{timestamp}.json")
         
         json_data = {
             'user_info': {
@@ -405,6 +448,8 @@ def process_user(user_email, user_credentials, exports_dir, days_back=30):
             },
             'fetch_info': {
                 'timestamp': datetime.now().isoformat(),
+                'start_date': start_date.strftime('%Y-%m-%d'),
+                'end_date': end_date.strftime('%Y-%m-%d'),
                 'total_records': len(sleep_records)
             },
             'sleep_records': sleep_records
@@ -469,6 +514,9 @@ def main():
     
     print(f"📋 Found {len(batch_credentials)} users to process")
     
+    # Get date range from user
+    start_date, end_date = get_date_range_from_user()
+    
     # Track results
     successful_users = []
     failed_users = []
@@ -478,7 +526,7 @@ def main():
     for user_email, user_credentials in batch_credentials.items():
         try:
             # Process the user
-            success = process_user(user_email, user_credentials, exports_dir, days_back=30)
+            success = process_user(user_email, user_credentials, exports_dir, start_date, end_date)
             
             if success:
                 successful_users.append(user_email)
@@ -507,6 +555,7 @@ def main():
     print("\n" + "="*60)
     print("📊 BATCH SUMMARY")
     print("="*60)
+    print(f"📅 Date range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
     print(f"✅ Successful users: {len(successful_users)}")
     print(f"❌ Failed users: {len(failed_users)}")
     print(f"📁 Exports directory: {exports_dir}")

@@ -9,7 +9,12 @@
 
 # Export data (large files, contains personal data)
 exports/
-*.csv
+
+# Allow data directory for versioned CSV files
+!data/
+!data/*.csv
+
+# Exclude sensitive JSON files
 *.json
 
 # Python

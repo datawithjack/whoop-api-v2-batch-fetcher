@@ -1,0 +1,47 @@
+# WHOOP API v2 Sleep Data Project - Cursor Rules
+
+Developer: Jack (Sports Data Analyst) | Language: Python | Project: WHOOP API v2 Batch Sleep Data Fetcher
+
+## Documentation First Approach
+Before implementing any code, check these files in order:
+1. `docs/CODE_INDEX.md` - Existing codebase structure and modules
+2. `docs/API_INDEX.md` - WHOOP API endpoints and integration patterns
+3. `docs/QUICK_REFERENCE.md` - Common sleep data processing patterns
+4. `docs/DEVELOPMENT_GUIDE.md` - Project standards and workflows
+
+## Project-Specific Context
+- **Core Focus**: WHOOP API v2 sleep data batch processing and analysis
+- **Key Modules**: `batch_sleep_fetcher.py`, `token_refresh_handler.py`, `expand_and_combine_sleep_data.py`
+- **Data Flow**: Authentication → Batch Fetch → JSON Export → CSV Expansion → Analysis
+- **Output Structure**: `exports/json/` for raw data, `exports/combined_csv/` for processed data
+
+## API Integration Standards
+- **WHOOP API v2**: Use existing token refresh patterns from `token_refresh_handler.py`
+- **Authentication**: Follow batch auth patterns in `batch_whoopy_auth.py`
+- **Data Endpoints**: Sleep data from `/developer/v2/activity/sleep`
+- **Error Handling**: Maintain consistent error patterns across batch operations
+
+## Sleep Data Processing Rules
+- **Nested Field Expansion**: Follow existing patterns for score.stage_summary, score.sleep_needed fields
+- **File Naming**: Use format `sleep_data_batch_{user_email}_{timestamp}`
+- **CSV Structure**: Expand all nested fields into individual columns as established
+- **Multi-User**: Always consider batch processing implications
+
+## Security & Privacy Standards
+- **Credentials**: Never include .env or credential files in suggestions
+- **Data Privacy**: Treat all sleep data as sensitive personal information
+- **Token Management**: Use existing refresh patterns, never hardcode tokens
+
+## Implementation Guidelines
+- Extend existing batch processing patterns rather than creating new ones
+- Follow established JSON→CSV expansion logic in `expand_and_combine_sleep_data.py`
+- Use existing file organization structure (`exports/json/`, `exports/combined_csv/`)
+- Maintain compatibility with WHOOP Developer API v2 specifications
+- Consider multi-user batch operations in all suggestions
+
+## Response Format
+When suggesting code changes:
+1. Reference which existing WHOOP API modules you're building upon
+2. Explain integration with batch processing pipeline
+3. Consider sleep data privacy and security implications
+4. Maintain established file naming and export patterns
