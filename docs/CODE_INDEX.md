@@ -8,6 +8,8 @@
 | `src/whoopy_auth_batch.py` | Batch user authentication | `batch_authentication()`, `authenticate_single_user()` | asyncio, requests, pandas |
 | `src/whoopy_auth_custom.py` | Single user authentication | `custom_whoop_auth()`, `test_credentials()` | asyncio, requests |
 | `src/token_refresh_handler.py` | Token management utilities | `refresh_access_token()`, `handle_token_refresh()` | requests, datetime |
+| `src/sleep_data_updater_github.py` | GitHub Actions sleep updater | `update_user_sleep_data()`, `refresh_user_token_batch()` | requests, json, csv |
+| `src/test_github_cli.py` | GitHub CLI testing utility | `test_github_cli_installation()`, `test_github_authentication()` | subprocess, json |
 
 ### Data Fetching Files
 | File | Purpose | Key Functions | Dependencies |

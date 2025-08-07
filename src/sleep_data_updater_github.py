@@ -93,7 +93,7 @@ def refresh_user_token_batch(credentials):
             
             print("  ✅ Token refreshed successfully!")
             print(f"  📅 New expiration: {expires_at}")
-            print("  ⚠️  Manual update needed: Update WHOOP_BATCH_CREDENTIALS in GitHub Secrets")
+            print("  🔄 Credentials will be automatically updated in GitHub Secrets")
             return True
             
         else:
@@ -335,9 +335,22 @@ def append_to_csv(csv_file, new_records, user_email):
     
     print(f"  ✅ Appended {len(flattened_records)} new records to {csv_file}")
 
-def update_user_sleep_data(user_email, user_credentials):
+def save_updated_credentials(batch_credentials):
+    """Save updated credentials to a file for GitHub Actions to update secrets"""
+    try:
+        with open('updated_credentials.json', 'w') as f:
+            json.dump(batch_credentials, f, indent=2)
+        print("  💾 Updated credentials saved for GitHub Secrets update")
+        return True
+    except Exception as e:
+        print(f"  ❌ Error saving updated credentials: {e}")
+        return False
+
+def update_user_sleep_data(user_email, user_credentials, batch_credentials):
     """Update sleep data for a single user"""
     print(f"\n🔄 Processing user: {user_email}")
+    
+    credentials_updated = False
     
     # First check if current token is still valid
     if check_token_validity(user_credentials):
@@ -350,16 +363,17 @@ def update_user_sleep_data(user_email, user_credentials):
             # Test the refreshed token
             if test_user_token(user_credentials):
                 print("  ✅ Token refreshed successfully!")
+                credentials_updated = True
             else:
                 print("  ❌ Refreshed token failed test.")
                 print("  💡 You may need to re-authenticate this user manually")
                 print("  ⏭️  Skipping user for now.")
-                return False
+                return False, False
         else:
             print("  ❌ Token refresh failed.")
             print("  💡 You may need to re-authenticate this user manually")
             print("  ⏭️  Skipping user for now.")
-            return False
+            return False, False
     else:
         time_left = datetime.fromisoformat(user_credentials['expires_at']) - datetime.now()
         print(f"  ✅ Token valid for: {time_left}")
@@ -380,12 +394,12 @@ def update_user_sleep_data(user_email, user_credentials):
     new_records = fetch_new_sleep_data(user_credentials, latest_date)
     if new_records is None:
         print("  ❌ Failed to fetch new data")
-        return False
+        return False, credentials_updated
     
     # Append new records to CSV
     append_to_csv(csv_file, new_records, user_email)
     
-    return True
+    return True, credentials_updated
 
 def main():
     """Main function to update sleep data for all batch users"""
@@ -405,17 +419,21 @@ def main():
     # Track results
     successful_users = []
     failed_users = []
+    any_credentials_updated = False
     
     # Process each user
     for user_email, user_credentials in batch_credentials.items():
         try:
             # Process the user
-            success = update_user_sleep_data(user_email, user_credentials)
+            success, credentials_updated = update_user_sleep_data(user_email, user_credentials, batch_credentials)
             
             if success:
                 successful_users.append(user_email)
             else:
                 failed_users.append(user_email)
+            
+            if credentials_updated:
+                any_credentials_updated = True
                 
         except Exception as e:
             print(f"  ❌ Unexpected error processing {user_email}: {e}")
@@ -426,6 +444,14 @@ def main():
             print("  ⏳ Waiting 5 seconds before next user...")
             import time
             time.sleep(5)
+    
+    # Save updated credentials if any were refreshed
+    if any_credentials_updated:
+        print("\n🔄 Saving updated credentials for GitHub Secrets update...")
+        if save_updated_credentials(batch_credentials):
+            print("✅ Updated credentials saved successfully!")
+        else:
+            print("❌ Failed to save updated credentials")
     
     # Summary
     print("\n" + "=" * 50)

@@ -138,17 +138,19 @@ on:
 - Click "Update WHOOP Sleep Data"
 - Click "Run workflow"
 
-## 🔄 **Step 6: Token Management**
+## 🔄 **Step 6: Token Management (Automatic)**
 
-### **When Tokens Expire:**
-1. **Run locally**: `python src/sleep_data_updater.py`
-2. **Check output**: Look for token refresh messages
-3. **Update GitHub Secret**: 
-   - Run `python src/prepare_github_secrets.py`
-   - Copy new JSON to GitHub Secrets
-   - Update `WHOOP_BATCH_CREDENTIALS` secret
+### **Automatic Token Refresh:**
+✅ **NEW**: The workflow now automatically updates GitHub Secrets when tokens are refreshed!
 
-### **Token Refresh Process:**
+### **How It Works:**
+1. **Token Expiry Detection**: Workflow checks if tokens are expired
+2. **Automatic Refresh**: Uses WHOOP API to refresh expired tokens
+3. **Secret Update**: Saves updated credentials and updates GitHub Secrets
+4. **No Manual Intervention**: Completely automated process
+
+### **Manual Token Management (Legacy):**
+If you need to manually refresh tokens:
 ```bash
 # 1. Run the updater (will refresh tokens)
 python src/sleep_data_updater.py
@@ -157,6 +159,15 @@ python src/sleep_data_updater.py
 python src/prepare_github_secrets.py
 
 # 3. Update GitHub Secret with new JSON
+```
+
+### **Testing Automatic Updates:**
+```bash
+# Test GitHub CLI functionality
+python src/test_github_cli.py
+
+# Test the complete workflow locally
+python src/sleep_data_updater_github.py
 ```
 
 ## 📊 **Step 7: Monitor and Maintain**
@@ -170,6 +181,8 @@ python src/prepare_github_secrets.py
 - **Workflow fails**: Check Actions tab for error logs
 - **No new data**: Verify tokens are valid
 - **Rate limiting**: WHOOP API has limits, workflow includes delays
+- **Secret update fails**: Check GitHub CLI installation and permissions
+- **Token refresh fails**: May need manual re-authentication for that user
 
 ### **Data Backup:**
 - CSV files are versioned in Git
@@ -182,6 +195,7 @@ python src/prepare_github_secrets.py
 ✅ **New sleep data appears in CSV files**  
 ✅ **Git commits show daily updates**  
 ✅ **No authentication errors in logs**  
+✅ **Secrets automatically updated when tokens refresh**  
 
 ## 🔧 **Customization Options**
 

@@ -7,7 +7,8 @@ on:
   workflow_dispatch:  # Allow manual triggering
 
 permissions:
-  contents: write 
+  contents: write
+  actions: write  # Required for updating secrets
 
 jobs:
   update-sleep-data:
@@ -24,6 +25,15 @@ jobs:
       with:
         python-version: '3.11'
     
+    - name: Install GitHub CLI
+      run: |
+        type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+        && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+        && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+        && sudo apt update \
+        && sudo apt install gh -y
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -35,8 +45,23 @@ jobs:
         WHOOP_CLIENT_SECRET: ${{ secrets.WHOOP_CLIENT_SECRET }}
         WHOOP_REDIRECT_URI: ${{ secrets.WHOOP_REDIRECT_URI }}
         WHOOP_BATCH_CREDENTIALS: ${{ secrets.WHOOP_BATCH_CREDENTIALS }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         python src/sleep_data_updater_github.py
+    
+    - name: Update GitHub Secrets (if needed)
+      if: always()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if [ -f "updated_credentials.json" ]; then
+          echo "🔄 Updating WHOOP_BATCH_CREDENTIALS secret..."
+          gh secret set WHOOP_BATCH_CREDENTIALS --body "$(cat updated_credentials.json)" --repo ${{ github.repository }}
+          echo "✅ Secret updated successfully!"
+          rm -f updated_credentials.json
+        else
+          echo "ℹ️  No credential updates needed"
+        fi
     
     - name: Commit and push changes
       run: |
